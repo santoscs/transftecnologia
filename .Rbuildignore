@@ -1,0 +1,12 @@
+^transftecnologia\.Rproj$
+^products/writing$
+^figures/explanatory_figures$
+^figures/exploratory_figures$
+^code/final_code$
+^code/raw_code$
+^data/tidy_data$
+^data/raw_data$
+^products$
+^figures$
+^code$
+^data$

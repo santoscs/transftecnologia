@@ -1,0 +1,280 @@
+---
+title: "Transferencia de Tecnologia INPI"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+load("data/tidy_data/tranfteconologia.RData")
+```
+
+## Empresas e contratos
+
+
+```{r tab0}
+
+tab <- df.geral %>%
+  count(e_cedentes, e_cessionaria)
+
+tab[,1] <- c("Sem contratos", "Com contrato como cessionaria", "Com contrato como cedente", "Com contrato como cessionaria e cedente")
+
+tab <- tab[,-2]
+
+colnames(tab) <- c("Situacao", "Numero de Empresas")
+
+tab <- tab %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(affix_sign = FALSE) %>%
+  adorn_ns(position = "front") %>%
+  as.data.frame()
+
+
+knitr::kable(tab)
+
+```
+
+
+## As dez principais empresas cedentes e cessionarias
+
+### Empresas Cedente
+
+```{r tab1}
+
+tab <- df.cedentes %>%
+  group_by(name_company) %>%
+  mutate( n =1 )%>%
+  summarise_at(vars(transferencia:licensa:cessao:n), sum) %>%
+  arrange(desc(n)) %>%
+  select(name_company, n, everything()) %>%
+  mutate(setor = df.cedentes$setor_b3[match(name_company, df.cedentes$name_company)]) %>%
+  select(name_company, setor, everything())  %>%
+  mutate(id = 1:length(n))
+df.cedentes %>%
+  group_by(name_company) %>%
+  count(pais_da_cessionaria)
+
+outros <- tab %>%
+  filter(id>10) %>%
+  summarise_if(is.numeric, sum)  %>%
+  mutate(name_company = "Outros") %>%
+  mutate(setor = "Outros") %>%
+  select(name_company, setor, everything())
+
+
+tab <- tab %>%
+  filter(id<11) 
+
+tab <- rbind(tab, outros) %>%
+  select(-id) %>%
+  mutate(name_company = str_to_title(name_company))
+
+tab <- tab %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(affix_sign = FALSE) %>%
+  adorn_ns(position = "front") %>%
+  as.data.frame()
+
+
+knitr::kable(tab)
+
+```
+
+
+
+### Empresas Cessionárias
+
+```{r tab2}
+
+tab <- df.cessionarias %>%
+  group_by(name_company) %>%
+  mutate( n =1 )%>%
+  summarise_at(vars(transferencia:licensa:cessao:n), sum) %>%
+  arrange(desc(n)) %>%
+  select(name_company, n, everything()) %>%
+  mutate(setor = df.cessionarias$setor_b3[match(name_company, df.cessionarias$name_company)]) %>%
+  select(name_company, setor, everything())  %>%
+  mutate(id = 1:length(n))
+
+
+outros <- tab %>%
+  filter(id>10) %>%
+  summarise_if(is.numeric, sum)  %>%
+  mutate(name_company = "Outros") %>%
+  mutate(setor = "Outros") %>%
+  select(name_company, setor, everything())
+
+
+tab <- tab %>%
+  filter(id<11) 
+
+tab <- rbind(tab, outros) %>%
+  select(-id) %>%
+  mutate(name_company = str_to_title(name_company))
+
+tab <- tab %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(affix_sign = FALSE) %>%
+  adorn_ns(position = "front") %>%
+  as.data.frame()
+
+
+knitr::kable(tab)
+
+```
+
+
+
+## Distribuicao dos contratos de transferencia por setor e ano
+
+```{r fig1}
+dados <-df.cessionarias %>%
+  group_by(name_company, ano , add = TRUE) %>%
+  count() 
+
+tmp <- dados %>%
+  group_by(ano) %>%
+  summarise(n = sum(n)) %>%
+  mutate(name_company = "Total")
+
+dados <- full_join(dados, tmp) %>%
+  ungroup(name_company) %>%
+  mutate(name_company = str_to_title(name_company)) %>%
+  filter(name_company %in% tab$name_company[c(1:5)])
+
+
+ggplot(data = dados, mapping = aes(x = ano, y=n)) +
+  geom_line(aes(color = name_company, linetype = name_company)) +theme_classic() +  theme(axis.text.x = element_text(angle=90, hjust=1), text=element_text(family="Times New Roman", size=11), axis.text = element_text(family="Times New Roman", size=11))   +
+  xlab(" ") + ylab(" ") +   theme(legend.title=element_blank()) +
+  theme(legend.position="bottom")
+
+```
+
+### Categoria dos contratos de tecnologia firmados pelas empresas da B3 por setores
+
+
+```{r tab3}
+
+tab <- df.cessionarias %>%
+  group_by(setor_b3) %>%
+  summarise_at(vars(transferencia:licensa:cessao), sum)
+
+tab <- tab %>%
+  adorn_totals("row") %>%
+  adorn_percentages("all") %>%
+  adorn_pct_formatting(affix_sign = FALSE) %>%
+  adorn_ns(position = "front") %>%
+  as.data.frame()
+
+knitr::kable(tab)
+
+```
+
+
+
+### Paises forncedores de tecnologia por meio de contrato 
+
+```{r fig2}
+
+aux <- df.cessionarias %>%
+  count(pais_da_cedente)
+
+aux$pais_da_cedente
+paises <- 
+c("SOUTH AFRICA", "GERMANY", "ARGENTINA", "AUSTRALIA", "AUSTRIA",
+"BELGIUM", "BRAZIL", "CANADA", "CHILE", "CHINA", "SINGAPORE", "COLOMBIA", "KOREA", "DENMARK", "SPAIN",
+"USA", "FINLAND", "FRANCE", "HOLLAND", "HUNGARY",
+"IRELAND", "ISRAEL", "ITALY", "JAPAN", "MALAYSIA",
+"MAURITIUS", "MEXICO", "NORWAY", "NEW ZEALAND", "PERU",
+"POLAND", "PORTUGAL", "UK", "CZECH REPUBLIC", "RUSSIA",
+"SWEDEN", "SWITZERLAND", "TAIWAN", "TURKEY", "UKRAINE",
+"URUGUAY", "VENEZUELA")
+
+
+
+paises <- str_to_title(paises)
+paises <- str_replace(paises, "Usa", "USA")
+paises <- str_replace(paises, "Uk", "UK")
+
+
+
+WorldData <- map_data('world')
+WorldData %>% filter(region != "Antarctica") -> WorldData
+WorldData <- fortify(WorldData)
+
+df <- data.frame(region=paises, 
+                 value=aux$n, 
+                 stringsAsFactors=FALSE)
+
+p <- ggplot()
+p <- p + geom_map(data=WorldData, map=WorldData,
+                  aes(x=long, y=lat, group=group, map_id=region),
+                  fill="white", colour="#7f7f7f", size=0.5)
+p <- p + geom_map(data=df, map=WorldData,
+                  aes(fill=value, map_id=region),
+                  colour="#7f7f7f", size=0.5)
+p <- p + coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90))
+p <- p + scale_fill_continuous(low="thistle2", high="darkred",
+                               guide="colorbar")
+p <- p + scale_y_continuous(breaks=c())
+p <- p + scale_x_continuous(breaks=c())
+p <- p + labs(fill="Num. Contratos", title="", x="", y="")
+p <- p + theme_bw()
+p <- p + theme(panel.border = element_blank()) + theme(legend.position="bottom")
+p 
+
+
+```
+
+
+```{r tab4}
+tab <- df.cessionarias %>%
+  group_by(pais_da_cedente) %>%
+  mutate( n =1 )%>%
+  summarise_at(vars(transferencia:licensa:cessao:n), sum) %>%
+  arrange(desc(n)) %>%
+  select(pais_da_cedente, n, everything()) %>%
+  mutate(id = 1:length(n))
+
+
+outros <- tab %>%
+  filter(id>9) %>%
+  summarise_if(is.numeric, sum)  %>%
+  mutate(pais_da_cedente = "Outros") %>%
+  select(pais_da_cedente, everything())
+
+ tab %>%
+  filter(pais_da_cedente == "BRASIL")
+
+tab <- tab %>%
+  filter(id<10) 
+
+
+
+tab <- rbind(tab, outros) %>%
+  select(-id) %>%
+  mutate(pais_da_cedente = str_to_title(pais_da_cedente))
+
+
+tab <- tab %>%
+  adorn_percentages("col") %>%
+  adorn_totals("row") %>%
+  adorn_pct_formatting(affix_sign = FALSE) %>%
+  adorn_ns(position = "front") %>%
+  as.data.frame()
+
+
+
+knitr::kable(tab)
+```
+
+
+
+
+
+
